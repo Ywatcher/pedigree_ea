@@ -1,5 +1,10 @@
 """Everything a run has found, independent of the population.
 
+Every fit is kept here as soon as it is found and never removed, whatever the
+population does; this is not a strategy choice. Strategies may decide
+separately whether the population prioritizes fits (`fits_first`) and,
+later, whether fits are used as parents (they can read `fits[i].genotype`).
+
 - distinct phenotypes evaluated (by parent-array key; cheap, not relabel-invariant)
 - fitting pedigrees, deduplicated by structure, with the evaluation they appeared at
 - the Pareto front of distinct structures over the phenotype objectives
@@ -8,6 +13,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -23,6 +29,7 @@ class Found:
     pedigree: Pedigree
     objectives: np.ndarray
     at_eval: int
+    genotype: Any = None      # the genotype that first produced it (for strategies that reuse fits)
 
 
 class Archive:
@@ -36,8 +43,10 @@ class Archive:
         self.last_new_pareto = 0
         self.last_new_phenotype = 0
 
-    def update(self, parents: np.ndarray, ev: Evaluation, first_eval: int) -> np.ndarray:
-        """Record a batch evaluated as evaluations first_eval .. first_eval+B-1.
+    def update(self, parents: np.ndarray, ev: Evaluation, first_eval: int,
+               genotypes: list | None = None) -> np.ndarray:
+        """Record a batch evaluated as evaluations first_eval .. first_eval+B-1
+        (`genotypes`: the batch's genotypes, kept with new fits).
 
         Returns flags (B, 3): new phenotype, new fitting structure, new Pareto point.
         """
@@ -57,7 +66,8 @@ class Archive:
             if ev.fits[b]:
                 ped = batch.to_pedigree(parents[b], self.problem.ids)
                 if self._fit_set.add(ped):
-                    self.fits.append(Found(ped, ev.objectives[b], at))
+                    self.fits.append(Found(ped, ev.objectives[b], at,
+                                           genotypes[b] if genotypes is not None else None))
                     self.last_new_fit = at
                     new[b, 1] = True
             if self._update_pareto(parents[b], ev.objectives[b], at, ped):

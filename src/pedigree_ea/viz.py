@@ -8,7 +8,8 @@
 - `write_gif(...)`: frames of [references | best | per reference: closest, latest removed
   closest | latest fit]; a removal is outlined in red on its frame.
 - `write_html(...)`: one self-contained web page (no server) with a method
-  selector, play/pause and a generation slider.
+  selector, play/pause and a generation slider; explanations come from
+  webviz/help.js (shared with the explorer) and are inlined.
 
 Snapshots come from runs with `RunConfig(snapshot=True)` (RunResult.snapshots).
 """
@@ -255,18 +256,22 @@ def write_html(path: str | Path, methods: list[dict], observed_ids: Sequence[str
                references: dict[str, Pedigree] | None = None,
                title: str = "Pedigree search") -> Path:
     """Self-contained viewer. `methods`: [{"label", "objective_names", "snapshots",
-    "summary" (optional dict)}]; `references` are drawn as fixed panels."""
+    "summary" (optional dict), "kind" (optional: ibd, king or kinship)}];
+    `references` are drawn as fixed panels."""
     data = {
         "title": title,
         "colors": colors_for(observed_ids),
         "references": [{"label": label, "layout": layout(ped, observed_ids)}
                        for label, ped in (references or {}).items()],
         "methods": [{"label": m["label"], "summary": m.get("summary", {}),
+                     "objectives": list(m.get("objective_names", ())), "kind": m.get("kind"),
                      "frames": frames_json(m["snapshots"], observed_ids,
                                            m.get("objective_names", ()))} for m in methods],
     }
-    html = _HTML.replace("__TITLE__", _escape(title)).replace(
-        "__DATA__", json.dumps(data).replace("</", "<\\/"))
+    help_js = (Path(__file__).parent / "webviz" / "help.js").read_text()
+    html = (_HTML.replace("__TITLE__", _escape(title))
+            .replace("__HELP__", help_js.replace("</", "<\\/"))
+            .replace("__DATA__", json.dumps(data).replace("</", "<\\/")))
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(html)
@@ -304,14 +309,16 @@ input[type=range] { flex:1 1 240px; min-width:160px; accent-color:var(--accent);
 .panel h2 { font-size:13px; margin:0 0 2px; }
 .panel .meta { font-size:12px; color:var(--muted); min-height:48px; }
 svg { width:100%; height:280px; display:block; }
-.legend, .summary { margin-top:10px; font-size:12px; color:var(--muted); }
+.summary { margin-top:10px; font-size:12px; color:var(--muted); }
+.panel .note { min-height:30px; }
+header { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
 </style></head><body>
-<h1 id="title"></h1>
-<div class="sub">Each frame is one generation. Shaded panels are the references, which only the recorder sees.
-"Closest" panels show the population's candidates most similar to each reference (fewest parent-child edits,
-then smallest IBD difference), with their objectives and fit status. "Removed closest" shows the most recent
-closest candidate that left the population and what replaced it; it is outlined in red on the frame where
-the removal happens.</div>
+<header><h1 id="title"></h1>
+  <label title="show short explanations of every part of the page"><input type="checkbox" id="explain"> Explain</label></header>
+<div class="note">Each frame is one generation of one run, recorded from a run database. Choose the run under Method,
+then play or drag the slider. The text under each panel gives that candidate's objectives, whether it fits, and its
+edits and IBD diff to each reference.</div>
+<div id="guide"></div>
 <div class="controls">
   <label>Method <select id="method"></select></label>
   <button id="play">Play</button>
@@ -320,11 +327,15 @@ the removal happens.</div>
   <input type="range" id="slider" min="0" value="0">
   <span class="status" id="status"></span>
 </div>
+<div class="note">Evaluations: pedigrees scored so far. Population: slots in the population. Frames may skip
+generations in long runs (at most 150 frames per run).</div>
 <div class="panels" id="panels"></div>
 <div class="summary" id="summary"></div>
-<div class="legend">Circles: observed people (same colour everywhere). Grey squares: latent people.
-Red ring: inbred. Arrows point from parent to child; rows are generations.
-"Edits" = parent-child links to add or remove to reach the reference; "IBD diff" = largest IBD0/1/2 difference over observed pairs.</div>
+<div class="note">Run summary: totals for the selected run at its end, e.g. evaluations and fits found (n_fits: distinct
+fits in the fit store), plus recall and when the truth was first found when a reference is known.</div>
+<script>
+__HELP__
+</script>
 <script>
 const DATA = __DATA__;
 const $ = id => document.getElementById(id);
@@ -357,9 +368,15 @@ function draw(svg, lay, note) {
     const t = el("text", {x, y: y + 5, "text-anchor":"middle", "font-size": n.observed ? 15 : 13,
       "font-weight": n.observed ? 700 : 400, fill: n.observed ? "#fff" : "var(--fg)"}, svg);
     t.textContent = n.id; }); }
+function helpKey(title) {
+  return title.startsWith("Reference") ? "references" : title.startsWith("Best") ? "best"
+    : title.startsWith("Closest") ? "closest" : title.startsWith("Removed") ? "removed"
+    : title.startsWith("Latest fit") ? "latest_fit" : null;
+}
 function panel(title, ref) {
   const d = document.createElement("div"); d.className = "panel" + (ref ? " ref" : "");
   const h = document.createElement("h2"); h.textContent = title; d.appendChild(h);
+  const n = document.createElement("div"); n.className = "note"; n.textContent = HELP.sections[helpKey(title)] || ""; d.appendChild(n);
   const m = document.createElement("div"); m.className = "meta"; d.appendChild(m);
   const s = el("svg", {id: "s" + Math.random().toString(36).slice(2)}); d.appendChild(s);
   $("panels").appendChild(d); return {d, h, m, s};
@@ -386,8 +403,13 @@ function play() { if (timer) return stop(); $("play").textContent = "Pause";
   timer = setInterval(() => { const n = DATA.methods[mi].frames.length;
     if (fi >= n - 1) return stop(); fi++; render(); }, +$("speed").value); }
 $("title").textContent = DATA.title;
+const GUIDE = HELP.guide([], null, null, ["Badges"]);
+$("guide").replaceWith(GUIDE);
+const showObjectives = () => GUIDE.setObjectives(DATA.methods[mi].objectives, DATA.methods[mi].kind);
+HELP.explainSwitch($("explain"));
+showObjectives();
 DATA.methods.forEach((m, i) => { const o = document.createElement("option"); o.value = i; o.textContent = m.label; $("method").appendChild(o); });
-$("method").onchange = e => { stop(); mi = +e.target.value; fi = 0; build(); render(); };
+$("method").onchange = e => { stop(); mi = +e.target.value; fi = 0; build(); render(); showObjectives(); };
 $("slider").oninput = e => { stop(); fi = +e.target.value; render(); };
 $("play").onclick = () => { if (fi >= DATA.methods[mi].frames.length - 1) fi = 0; play(); };
 $("speed").onchange = () => { if (timer) { stop(); play(); } };

@@ -51,7 +51,7 @@ def render_runs(db_path: str | Path, run_ids: Sequence[int], labels: Sequence[st
         refs = view.refs
         snaps = view.snapshots(list(refs), record_closest)
         entries.append({"label": label, "objective_names": view.objective_names, "snapshots": snaps,
-                        "summary": (summaries[i] if summaries else view.summary) or {}})
+                        "kind": view.kind, "summary": (summaries[i] if summaries else view.summary) or {}})
         if gif:
             path = out_dir / f"anim_{_slug(name)}_{_slug(label)}_{stamp}.gif"
             viz.write_gif(path, snaps, view.ids, refs, title=f"{name} · {label}",

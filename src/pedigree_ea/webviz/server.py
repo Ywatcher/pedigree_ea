@@ -25,6 +25,7 @@ from ..genetics.pedigree import Pedigree
 from ..store.reader import Database
 
 INDEX = Path(__file__).with_name("index.html")
+HELP_JS = Path(__file__).with_name("help.js")   # explanations, shared with viz.write_html
 
 
 class App:
@@ -81,6 +82,8 @@ def make_handler(app: App):
             url = urlparse(self.path)
             if url.path in ("/", "/index.html"):
                 return self._send(200, INDEX.read_bytes(), "text/html; charset=utf-8")
+            if url.path == "/help.js":
+                return self._send(200, HELP_JS.read_bytes(), "text/javascript; charset=utf-8")
             try:
                 data = app.handle(url.path, parse_qs(url.query))
                 body = json.dumps(to_jsonable(data)).encode()

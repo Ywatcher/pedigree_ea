@@ -105,6 +105,8 @@ Population at generation 76, just before the truth appeared (100 members, 6 dist
 | #5, #6, #9 (A and B unrelated) | 10, 25, 15 | (0.5, 0.5, 0) | no | 1 | 5–6 |
 | truth (not in population) | 0 | (0, 0, 3) | yes | **2** | 0 |
 
+Columns: **Candidate** = id in the run database; **Copies** = population slots it fills; **f** = objective vector (total per-pair error, worst per-pair error, latent people), all minimized; **Fits** = within tolerance on every pair; **Front** = Pareto rank (1 = dominated by no candidate; NSGA-II keeps front 1 first); **Edits to truth** = parent-child links to add or remove to reach the true pedigree.
+
 - **Dominance:** (0, 0, 1) dominates (0, 0, 3): equal errors, 1 latent person instead of 3. The truth falls to front 2. The unrelated pedigrees (0.5, 0.5, 0) are not dominated, because 0 latent is fewer than 1, so a bad pedigree holds half the population.
 - **Survival:** from parents and children (200), NSGA-II keeps whole fronts in order until 100 are filled, using crowding only inside the last front it touches. All 100 parents are already in front 1, so only front 1 survives and the truth is excluded whatever its crowding.
 - **Duplicates:** copies are pushed to the back, so a distinct front-2 pedigree would beat a front-1 copy. But copies are detected by parent array, and the 6 pedigrees have many arrays (latent people in different slots and orders), so front 1 holds more than 100 "distinct" arrays.
@@ -121,6 +123,44 @@ Here P\_g is the population, A\_g the fits found by generation g, T the truth, d
 | Drop `n_latent` from survival, or use it only between non-fits | truth ties with the other fits in front 1 | yes |
 | Detect duplicates by canonical structure | front 1 has 6 distinct pedigrees; their copies rank after the truth | yes |
 | Keep all fits as a parent pool | truth stays usable even when dropped | indirectly |
+
+### Fits were detected, but not used to keep solutions
+
+This describes the code at commit `f75753e`, before the keep-fits change. The program could already tell which candidates are solutions; selection never asked.
+
+**How a fit was detected** (`Problem._evaluate`). For a candidate x with exact expected values and the observed input, over all observed pairs p:
+
+```latex
+\text{fits}(x) \iff \text{valid}(x) \;\wedge\; \max_{p} \, e_p(x) \le \tau
+```
+
+- valid(x): no cycle, and couples can be one male and one female (mate graph bipartite).
+- e_p(x), by input: IBD → max(|ΔIBD0|, |ΔIBD1|, |ΔIBD2|); kinship → |Δkinship|; KING → max(|Δkinship|, |ΔIBD0| · τ / τ_IBD0), with observed IBD0 = IBS0 ÷ IBS0 of unrelated pairs.
+- τ = 1e-6 on clean cases; 0.05 (kinship) and 0.15 (IBD0) on Task03. The same rule builds the brute-force answer keys.
+
+**Where the result went.** The flag was returned with every evaluation and stored by the archive and the database (`fit_at_eval`), so fits counted for results and recall. No strategy read it.
+
+**How survivors were chosen** (NSGA-II). Only the objective vector f(x) was used:
+
+```latex
+x \prec y \iff f_i(x) \le f_i(y) \;\forall i \;\wedge\; f_j(x) < f_j(y) \text{ for some } j
+```
+
+```latex
+S = F_1 \cup \dots \cup F_{k-1} \cup \text{top}_{\text{crowding}}(F_k), \qquad k = \min\{\, j : |F_1| + \dots + |F_j| \ge N \,\}
+```
+
+F_j are the Pareto fronts of parents and children together (front 1 = dominated by no one), N = 100. Copies were pushed behind all non-copies, but a copy meant an identical parent array, not an identical pedigree.
+
+**Why that does not keep solutions.** Keeping every fit would need F_1 to equal the set of fits: fits never dominated by fits, and every fit ahead of every non-fit.
+
+| Objectives | A fit dominated by another fit? | A non-fit in front 1 with fits? | Front 1 = all fits? |
+| --- | --- | --- | --- |
+| (ibd_total, ibd_worst, n_latent) | yes: (0, 0, 1) ≺ (0, 0, 3) | yes: (0.5, 0.5, 0) has fewer latent people | no |
+| (excess_total, excess_worst, n_bad_pairs, n_latent) | yes: fits differ only in n_latent | yes: same reason | no |
+| the same without n_latent | no: every fit is (0, 0, 0) | no: every non-fit has a value > 0 | yes, but fits are then tied, crowding cannot separate them, and copies by array still take slots |
+
+A non-fit can never dominate a fit (its worst error exceeds τ), so fits were lost only to other fits, through preference objectives such as n_latent, and to crowding inside a mixed front. The fix keeps fit status out of the objectives and uses it to keep candidates: fits rank before non-fits, fits do not compete with each other, and copies are detected by structure.
 
 ## Problems and next steps
 

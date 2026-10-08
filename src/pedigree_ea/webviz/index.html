@@ -52,19 +52,24 @@ th, td { border-bottom:1px solid var(--border); padding:3px 5px; text-align:righ
 th:first-child, td:first-child { text-align:left; }
 a { color:var(--accent); cursor:pointer; }
 .err { color:var(--bad); }
+
 </style></head><body>
 <header>
   <h1>Pedigree run explorer</h1>
   <label>Run <select id="run"></select></label>
+  <label title="show short explanations of every part of the page"><input type="checkbox" id="explain"> Explain</label>
   <div class="info" id="info"></div>
 </header>
 <div class="layout">
 <aside>
-  <h3>References</h3><div id="refs" class="empty">none in this database</div>
+  <h3>References</h3>
+  <div class="note">Known pedigrees (e.g. the true one) to compare candidates with. The search never sees them; only this recorder does.</div>
+  <div id="refs" class="empty">none in this database</div>
   <label>Closest per reference <input type="number" id="k" min="1" max="10" value="1" style="width:56px"></label>
-  <h3>Sections</h3><div id="sections"></div>
-  <h3>Properties</h3><div id="props"></div>
-  <h3>Chart</h3><div id="series"></div>
+  <div class="note">How many of the closest population members to show for each reference.</div>
+  <h3>Sections</h3><div class="note">Groups of pedigree cards shown for the current generation.</div><div id="sections"></div>
+  <h3>Properties</h3><div class="note">Lines of text shown under each card.</div><div id="props"></div>
+  <h3>Chart</h3><div class="note">Curves over all generations, drawn above the cards.</div><div id="series"></div>
 </aside>
 <main>
   <div class="timeline">
@@ -78,21 +83,30 @@ a { color:var(--accent); cursor:pointer; }
     <select id="jump"><option value="">Jump to event…</option></select>
     <label>Speed <select id="speed"><option value="500">slow</option><option value="200" selected>normal</option><option value="60">fast</option></select></label>
   </div>
+  <div class="note">Move through the run one generation at a time: buttons, slider, arrow keys, typing a generation number,
+    or jumping to an event (first fit, a reference entering the population, the closest candidate being removed).</div>
+  <div id="guide"></div>
   <div class="status" id="status"></div>
+  <div class="note">Evaluations: pedigrees scored so far. Population: slots in the population, and how many distinct pedigrees fill them.
+    Fits so far: distinct fits in the fit store.</div>
   <svg id="chart"></svg>
+  <div class="note" id="chartnote">Each row is scaled to its own range (shown under its name). Ticks along the bottom:
+    red = the closest candidate to a reference was removed, green = first fit. Click the chart to jump to a generation.</div>
   <div id="frame"></div>
 </main>
 </div>
 <div id="detail"></div>
+<script src="help.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
+// [value, label, explanation]; explanations come from help.js.
 const SECTIONS = [["references", "References"], ["best", "Best in population"], ["closest", "Closest to reference"],
   ["removed", "Removed closest"], ["latest_fit", "Latest fit"], ["pareto", "Pareto front of population"],
-  ["population", "Whole population"]];
+  ["population", "Whole population"]].map(([k, l]) => [k, l, HELP.sections[k]]);
 const PROPS = [["objectives", "Objectives (current code)"], ["entry", "Objectives at entry"], ["fit", "Fit / worst pair error"],
   ["distances", "Distances to references"], ["structure", "Latent people / inbred"], ["count", "Copies in population"],
-  ["lineage", "Lineage (first generation, operator)"]];
+  ["lineage", "Lineage (first generation, operator)"]].map(([k, l]) => [k, l, HELP.props[k]]);
 const store = { get(k, d) { try { const v = localStorage.getItem("pedviz:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
                 set(k, v) { try { localStorage.setItem("pedviz:" + k, JSON.stringify(v)); } catch (e) {} } };
 let S = { runs: [], run: null, meta: null, series: null, gen: 1, timer: null, frames: new Map(), pending: null,
@@ -137,9 +151,10 @@ function draw(svg, lay, note) {
 // ---- controls --------------------------------------------------------------
 function checkboxes(container, items, set, key, onchange) {
   container.innerHTML = "";
-  items.forEach(([value, label]) => { const cb = h("input", {type:"checkbox", checked:set.has(value)});
+  items.forEach(([value, label, help]) => { const cb = h("input", {type:"checkbox", checked:set.has(value)});
     cb.onchange = () => { cb.checked ? set.add(value) : set.delete(value); if (key) store.set(key, [...set]); onchange(); };
-    container.append(h("label", {}, cb, " " + label)); });
+    container.append(h("label", {title:help || ""}, cb, " " + label));
+    if (help) container.append(h("div", {className:"note", textContent:help})); });
 }
 function refsQuery() { return [...S.refs].join(","); }
 
@@ -169,6 +184,8 @@ async function selectRun(id) {
   $("info").textContent = `${m.case || ""} · ${m.label} · seed ${m.seed} · ${m.kind} target · objectives: ${m.objectives.join(", ")}` +
     ` · max latent ${m.config.max_latent}, tol ${m.config.tol}` + (m.score && m.score.recall != null ? ` · recall ${fmt(m.score.recall)}` : "") +
     (m.summary ? ` · ${m.summary.n_fits} fits, ${m.summary.n_evals} evaluations` : "");
+  $("info").title = "case · strategy · seed · data type · objectives (all minimized) · limits: latent people allowed, error tolerance per pair";
+  GUIDE.setObjectives(m.objectives, m.kind);
   const labels = m.references.map(r => r.label);
   const savedRefs = store.get("refs", null);
   S.refs = new Set(labels.filter(l => !savedRefs || savedRefs.includes(l)));
@@ -184,8 +201,11 @@ async function selectRun(id) {
 async function refresh() {
   S.frames.clear();
   S.series = await api(`/api/run/${S.run}/series?refs=${refsQuery()}`);
-  const items = [["n_fits", "Fits found"], ["distinct", "Distinct in population"], ["n_phenotypes", "Distinct evaluated"],
-    ...S.meta.objectives.map(o => ["best:" + o, "Best " + o]), ...Object.keys(S.series.closest).map(r => ["closest:" + r, "Edits to " + r])];
+  const items = [["n_fits", "Fits found", "Distinct fits found so far (the fit store; only grows)."],
+    ["distinct", "Distinct in population", "Distinct pedigrees in the population each generation (copies counted once)."],
+    ["n_phenotypes", "Distinct evaluated", "Distinct parent arrays scored so far; relabelled copies of one pedigree count separately."],
+    ...S.meta.objectives.map(o => ["best:" + o, "Best " + o, `Lowest ${o} in the population, this objective taken on its own.`]),
+    ...Object.keys(S.series.closest).map(r => ["closest:" + r, "Edits to " + r, `Fewest edits from any member to ${r}; 0 means ${r} is in the population.`])];
   checkboxes($("series"), items, S.chart, "chart", drawChart);
   const jump = $("jump"); jump.innerHTML = '<option value="">Jump to event…</option>';
   if (S.series.first_fit_gen) jump.append(h("option", {value:S.series.first_fit_gen, textContent:`first fit · gen ${S.series.first_fit_gen}`}));
@@ -265,9 +285,9 @@ function propLines(c) {
 function cardEl(c, opts = {}) {
   const d = h("div", {className:"card" + (opts.alert ? " alert" : "") + (opts.ref ? " ref" : "")});
   const head = h("div", {className:"head"}, h("b", {textContent:opts.title || `#${c.cid}`}));
-  if (!opts.ref) { if (!c.valid) head.append(h("span", {className:"badge bad", textContent:"invalid"}));
-    else if (c.fits) head.append(h("span", {className:"badge fit", textContent:"fits"}));
-    if (c.inbred) head.append(h("span", {className:"badge bad", textContent:"inbred"})); }
+  if (!opts.ref) { if (!c.valid) head.append(h("span", {className:"badge bad", textContent:"invalid", title:"not a possible pedigree (e.g. someone is their own ancestor)"}));
+    else if (c.fits) head.append(h("span", {className:"badge fit", textContent:"fits", title:"every pair within tolerance: a solution"}));
+    if (c.inbred) head.append(h("span", {className:"badge bad", textContent:"inbred", title:"someone in this pedigree is inbred"})); }
   d.append(head);
   const svg = el("svg", {}); d.append(svg); draw(svg, c.layout);
   const props = h("div", {className:"props"});
@@ -277,31 +297,34 @@ function cardEl(c, opts = {}) {
   if (!opts.ref) d.onclick = () => openDetail(c.cid);
   return d;
 }
-function section(title, sub, cards) {
+const SECTION_HELP = Object.fromEntries(SECTIONS.map(([k, , help]) => [k, help]));
+function section(title, sub, cards, key) {
   const s = h("section", {}, h("h2", {}, title, sub ? h("small", {textContent:" " + sub}) : ""));
+  if (key && SECTION_HELP[key]) s.append(h("div", {className:"note", textContent:SECTION_HELP[key]}));
   const grid = h("div", {className:"cards"}); cards.forEach(c => grid.append(c));
   if (!cards.length) grid.append(h("div", {className:"empty", textContent:"none"}));
   s.append(grid); return s;
 }
 function render() {
   const f = S.frame, out = $("frame"); if (!f) return; out.innerHTML = "";
+  $("status").title = "evaluations: pedigrees scored so far · population: slots (distinct pedigrees) · fits so far: distinct fits in the fit store";
   $("status").textContent = `generation ${f.gen} / ${S.meta.generations} · ${f.evals.toLocaleString()} evaluations · ` +
     `population ${f.population} (${f.distinct} distinct) · ${f.n_fits} fits so far · ${f.seconds}s`;
   const has = k => S.sections.has(k);
   if (has("references") && S.meta.references.length)
     out.append(section("References", "fixed; never shown to the search",
-      S.meta.references.filter(r => S.refs.has(r.label)).map(r => cardEl({layout:r.layout}, {ref:true, title:r.label}))));
-  if (has("best")) out.append(section("Best in population", "lexicographic on the objectives", [cardEl(f.best)]));
+      S.meta.references.filter(r => S.refs.has(r.label)).map(r => cardEl({layout:r.layout}, {ref:true, title:r.label})), "references"));
+  if (has("best")) out.append(section("Best in population", "lexicographic on the objectives", [cardEl(f.best)], "best"));
   if (has("closest")) for (const [r, cs] of Object.entries(f.closest))
-    out.append(section(`Closest to ${r}`, "fewest edits, then smallest IBD difference", cs.map(c => cardEl(c))));
+    out.append(section(`Closest to ${r}`, "fewest edits, then smallest IBD difference", cs.map(c => cardEl(c)), "closest"));
   if (has("removed")) for (const r of Object.keys(f.closest)) { const e = f.removed[r];
     out.append(section(`Removed closest to ${r}`, e ? `generation ${e.generation}${e.new ? " (this generation)" : ""}` : "none so far",
       e ? [cardEl(e.card, {alert:e.new, lines:[`removed in generation ${e.generation}: was ${e.distance_before} edits away`,
-        `replaced as closest by #${e.replaced_by} (${e.distance_after} edits)`]})] : [])); }
+        `replaced as closest by #${e.replaced_by} (${e.distance_after} edits)`]})] : [], "removed")); }
   if (has("latest_fit")) out.append(section("Latest fit", f.latest_fit ? `found at evaluation ${f.latest_fit.found_at_eval.toLocaleString()}` : "",
-    f.latest_fit ? [cardEl(f.latest_fit)] : []));
-  if (has("pareto")) out.append(section("Pareto front of population", `${f.pareto.length} candidates`, f.pareto.map(c => cardEl(c))));
-  if (has("population")) out.append(section("Whole population", `${f.distinct} distinct, sorted by Pareto rank`, f.members.map(c => cardEl(c))));
+    f.latest_fit ? [cardEl(f.latest_fit)] : [], "latest_fit"));
+  if (has("pareto")) out.append(section("Pareto front of population", `${f.pareto.length} candidates`, f.pareto.map(c => cardEl(c)), "pareto"));
+  if (has("population")) out.append(section("Whole population", `${f.distinct} distinct, sorted by Pareto rank`, f.members.map(c => cardEl(c)), "population"));
 }
 
 // ---- detail ------------------------------------------------------------------
@@ -332,7 +355,10 @@ async function openDetail(cid) {
     : [["obs_kinship", "obs kinship"], ["pred_kinship", "pred kinship"], ["pred_ibd0", "pred IBD0"], ["pred_ibd1", "pred IBD1"], ["pred_ibd2", "pred IBD2"]];
   const table = h("table", {}, h("tr", {}, h("th", {textContent:"pair"}), ...cols.map(([, t]) => h("th", {textContent:t}))));
   c.per_pair.forEach(r => table.append(h("tr", {}, h("td", {textContent:r.pair}), ...cols.map(([key]) => h("td", {textContent:fmt(r[key])})))));
-  d.append(h("h3", {textContent:"Per pair: observed vs predicted", style:"font-size:13px;margin:14px 0 6px"}), table);
+  d.append(h("h3", {textContent:"Per pair: observed vs predicted", style:"font-size:13px;margin:14px 0 6px"}),
+    h("div", {className:"note", textContent:"obs: from the input data. pred: expected under this pedigree. " +
+      (k === "king" ? "IBD0~: IBD0 estimated from the data's IBS0 (IBS0 divided by the IBS0 of unrelated pairs). " : "") +
+      "A pair fits when its predicted values are within tolerance of the observed ones."}), table);
 }
 
 // ---- timeline ----------------------------------------------------------------
@@ -354,6 +380,9 @@ $("k").onchange = () => { S.frames.clear(); go(S.gen); };
 document.addEventListener("keydown", e => { if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
   if (e.key === "ArrowRight") { stop(); go(S.gen + 1); } if (e.key === "ArrowLeft") { stop(); go(S.gen - 1); }
   if (e.key === "Escape") $("detail").className = ""; });
+const GUIDE = HELP.guide([["#number", "A candidate's ID in the database; the same pedigree keeps its ID across generations. Click a card for details."]]);
+$("guide").replaceWith(GUIDE);
+HELP.explainSwitch($("explain"), drawChart);
 window.addEventListener("resize", drawChart);
 loadRuns().catch(e => { $("frame").append(h("div", {className:"err", textContent:e.message})); });
 </script></body></html>

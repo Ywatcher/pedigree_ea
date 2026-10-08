@@ -18,7 +18,7 @@ Run everything from the repo root, e.g. `conda run -n pedigree_ea python -m pyte
 | `docs/report_01_setup_baselines.md` | Report 1: setup and baseline results |
 | `docs/report_02_recorder_gap.md` | Report 2: recorder design for diagnosing the EA, current results, and the population–archive gap |
 | `plt/` | Figures used by the reports (tracked); `plt/anim_*` animations from runs (git-ignored) |
-| `configs/` | Grid specs for `scripts/grid.py` (`grid_poss_vs_nsga2.json`, `grid_encodings.json`) |
+| `configs/` | Grid specs for `scripts/grid.py` (`grid_poss_vs_nsga2.json`, `grid_encodings.json`, `grid_task3.json`, `grid_fits_first.json`) |
 
 ## `src/pedigree_ea/` — package layout
 
@@ -85,7 +85,8 @@ Each distinct pedigree is stored once; per-run tables only index candidates. Sto
 | File | Purpose |
 |---|---|
 | `server.py` | Local HTTP server and JSON API over a database (runs, series, frames, candidates) |
-| `index.html` | The page: run selector; references, sections, properties and chart series to show; slider, step buttons, generation box, event jumps and clickable progress chart; candidate detail with per-pair observed vs predicted values and lineage; `?run=&gen=` links |
+| `index.html` | The page: run selector; references, sections, properties and chart series to show; slider, step buttons, generation box, event jumps and clickable progress chart; candidate detail with per-pair observed vs predicted values and lineage; `?run=&gen=` links; an Explain switch for the notes and guide from `help.js` |
+| `help.js` | Explanations of every part of the pages (drawing legend, sections, properties, objectives, pair error per data type), the "How to read this page" guide and the Explain switch; served by the explorer and inlined into `viz.write_html` pages |
 
 ## `src/pedigree_ea/ea/` — evolutionary search
 
@@ -94,7 +95,7 @@ Each distinct pedigree is stored once; per-run tables only index candidates. Sto
 | `__init__.py` | Public API of the EA package |
 | `problem.py` | `Problem`: IBD, kinship or KING target, `max_latent`, `tol` (+ `tol_ibd0`), objectives (`ibd_total`, `ibd_worst`, `n_bad_pairs`, `excess_total`, `excess_worst`, `n_latent`, `inbreeding`); batched evaluation with a cache; defines when a pedigree fits |
 | `archive.py` | `Archive`: everything a run found — distinct phenotypes, fitting structures (with the evaluation they appeared at), Pareto front |
-| `pareto.py` | Dominance, Pareto fronts, crowding distance, NSGA-II survivor selection, binary tournament |
+| `pareto.py` | Dominance, Pareto fronts, crowding distance, NSGA-II survivor selection, binary tournament; `fit_first_ranks` (fits before non-fits, fits not competing) and `select_by_ranks` |
 | `engine.py` | `Engine` (shared bookkeeping: evaluate, archive, operator statistics, logging, snapshots, stopping), `Stopping`, `RunResult` |
 | `recording.py` | What snapshots record (hidden from the search): best candidate, the candidates closest to each reference with objectives and distances, and removal events when the closest candidate leaves the population |
 
@@ -163,6 +164,7 @@ Every encoding decodes to the same `(N, 2)` parent array, so evaluation, archive
 | `test_grid.py` | Grid expansion, configs, file output, parallel = serial, several grids in one pool, shared answer keys; POSS finds both parent-child orientations; excess objectives |
 | `test_batch.py` | Batched evaluation equals exact code; conversions; pruning count; sex conflicts |
 | `test_store.py` | Canonical form; writer → reader (population replay, fits, lineage, events equal in-memory recording); references added later; merge deduplication; grid database; web API |
+| `test_fits_first.py` | Fit status keeps candidates: fit-first ranks, duplicates by structure, NSGA-II holds the truth once found, POSS keeps every fit, (1+λ) never leaves a fit |
 | `test_recording.py` | Structure and relationship distances; recording hidden from the search; removal events; truth as default reference |
 | `test_ea.py` | Contract tests for every implemented representation; Pareto selection; problem; baselines; logger files |
 

@@ -1,4 +1,4 @@
-Given IBD value for each pair of people(here we use people instead of individuals, to avoid confusion with individual genotype/phenotype in evolutionary algorithm), try to find many compatible pedigrees.
+Given IBS0 and IBD value for each pair of people(here we use people instead of individuals, to avoid confusion with individual genotype/phenotype in evolutionary algorithm), try to find many compatible pedigrees.
 
 goals (can be following): 
  - find as much as possible, after N steps

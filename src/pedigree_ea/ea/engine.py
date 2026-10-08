@@ -17,6 +17,7 @@ from ..genetics import batch
 from .archive import Archive
 from .experiments.logger import RunLogger
 from .problem import Problem
+from ..genetics.canonical import canonical_form
 from ..store.writer import RunWriter
 from .recording import Recording, events_for_log, records_for_log
 from .representations.base import Representation
@@ -70,6 +71,7 @@ class Engine:
         self.stop_reason = ""
         self.store = store
         self._first: dict[bytes, dict] = {}     # this generation's first evaluations (for the store)
+        self._structure: dict[bytes, bytes] = {}  # parent-array key -> canonical form (cache)
 
     def evaluate(self, genotypes: list, ops: list[str] | None = None,
                  parents: list[tuple] | None = None) -> tuple[np.ndarray, np.ndarray]:
@@ -82,7 +84,7 @@ class Engine:
         if self.rep.genotype_objective_names:
             extra = np.array([self.rep.genotype_objectives(g) for g in genotypes], dtype=float)
             objs = np.hstack([objs, extra])
-        new = self.archive.update(arrays, ev, self.n_evals)
+        new = self.archive.update(arrays, ev, self.n_evals, genotypes)
         if ops is not None:
             for op, (new_pheno, new_fit, _) in zip(ops, new):
                 s = self.op_stats[op]
@@ -93,6 +95,20 @@ class Engine:
             self._store_evaluations(parents or [()] * len(genotypes), arrays, objs, ops, new)
         self.n_evals += len(genotypes)
         return objs, ev.fits
+
+    def structure_keys(self, genotypes: list) -> list[bytes]:
+        """Canonical form of each genotype's pedigree: equal iff same structure
+        (relabelled copies included). Cached by parent array."""
+        out = []
+        for g in genotypes:
+            arr = batch.normalize(self.rep.decode(g))
+            k = batch.key(arr)
+            c = self._structure.get(k)
+            if c is None:
+                ped = batch.to_pedigree(arr, self.problem.ids, prune=False)
+                c = self._structure[k] = canonical_form(ped, self.problem.ids)
+            out.append(c)
+        return out
 
     def _store_evaluations(self, parent_genotypes, arrays, objs, ops, new) -> None:
         store = self.store

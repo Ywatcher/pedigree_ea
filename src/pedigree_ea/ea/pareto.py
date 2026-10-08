@@ -60,6 +60,34 @@ def nsga2_select(objs: np.ndarray, k: int, penalize: np.ndarray | None = None) -
     return order[:k]
 
 
+def fit_first_ranks(objs: np.ndarray, fits: np.ndarray) -> np.ndarray:
+    """Ranks where every fit (a solution: valid and within tolerance) comes
+    first and fits do not compete with each other; non-fits get their usual
+    Pareto ranks among themselves, after all fits.
+
+    Fit status is used here to *keep* candidates, not as an objective. If fit
+    status (or a constraint violation such as excess_total) is added to the
+    objectives in future, this and the Pareto ranking may merge into a single
+    constrained-domination step (Deb: feasible beats infeasible; infeasible
+    compared by violation; feasible compared by objectives).
+    """
+    ranks = np.zeros(len(objs), dtype=int)
+    rest = np.nonzero(~fits)[0]
+    if rest.size:
+        ranks[rest] = 1 + nondominated_ranks(objs[rest])
+    return ranks
+
+
+def select_by_ranks(objs: np.ndarray, ranks: np.ndarray, k: int,
+                    penalize: np.ndarray | None = None) -> np.ndarray:
+    """Indices of k survivors by (rank, -crowding) for given ranks; rows flagged
+    in `penalize` (duplicates) are only taken after all others."""
+    if penalize is not None:
+        ranks = np.where(penalize, ranks + len(objs) + 1, ranks)
+    dist = crowding(objs, ranks)
+    return np.lexsort((-dist, ranks))[:k]
+
+
 def tournament(ranks: np.ndarray, dist: np.ndarray, rng: np.random.Generator) -> int:
     a, b = rng.integers(len(ranks), size=2)
     if ranks[a] != ranks[b]:
