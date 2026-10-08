@@ -2,7 +2,7 @@
   "name": "fits_first",
   "cases": ["avuncular", "first_cousins", "sibs_with_children", "related_parents"],
   "files": [
-    {"path": "../bioinfo_tasks/Task03_IBD/task3_500kb_kin.kin0", "name": "task3",
+    {"path": "data/task03/task3_500kb_kin.kin0", "name": "task3",
      "target": "king", "max_latent": [2, 3], "tol": 0.05, "tol_ibd0": 0.15, "key": true,
      "references": {"siblings": "references/task3_siblings.tsv"}}
   ],

@@ -12,7 +12,7 @@ similar to each reference, with their objectives.
 
 Examples (run from the repo root):
     python scripts/animate.py --case avuncular --methods direct direct:poss neat cgp
-    python scripts/animate.py --file ../bioinfo_tasks/Task03_IBD/task3_500kb_kin.kin0 \\
+    python scripts/animate.py --file data/task03/task3_500kb_kin.kin0 \\
         --max-latent 2 --reference references/task3_siblings.tsv:siblings \\
         --methods direct direct:nsga2:excess_total+excess_worst+n_bad_pairs+n_latent
 

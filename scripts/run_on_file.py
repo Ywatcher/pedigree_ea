@@ -21,8 +21,7 @@ per-run logs and results, results/<name>_key_L<k>_<stamp>/ (answer key) and
 results/<name>_found_L<k>_<stamp>/ (pooled pedigrees found). Run from the repo root.
 
 Example (Task03):
-    python scripts/run_on_file.py ../bioinfo_tasks/Task03_IBD/task3_500kb_kin.kin0 \\
-        --psam ../bioinfo_tasks/Task03_IBD/task3_pfile.psam --key --log
+    python scripts/run_on_file.py data/task03/task3_500kb_kin.kin0 --key --log
 """
 
 import argparse
