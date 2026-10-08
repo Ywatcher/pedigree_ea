@@ -8,6 +8,14 @@ This is a research project for comparing pedigree encodings, mutation operators,
 
 Task03 example: Direct + NSGA-II finds a fitting pedigree after 16,876 evaluations. Circles are observed people; grey squares are latent ancestors; arrows point from parent to child. Panels compare the evolving population and latest fit with a sibling reference used only for analysis. This animation is from the October 8 baseline run, before fit-prioritized selection was added.
 
+## Why evolutionary search alongside existing methods?
+
+Established pedigree-reconstruction methods use particular relationship models, candidate-building rules, and data assumptions. These choices make inference tractable but can limit the structures considered. For example, PRIMUS builds family networks using relationships up to third degree; the Bonsai study identifies additional consanguineous relationship types as an area for extension. Such limits differ between tools; existing methods already support many complex families. [PRIMUS paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC4225580/), [Bonsai paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC8595950/)
+
+Our motivation is to search pedigree structures directly rather than restrict every pair to a predefined list of relationship labels. Mutations can introduce shared latent ancestors, combine relationships across generations, and create multiple ancestry paths or inbreeding. The genetics evaluator scores the resulting structure, so the EA has the potential to explore combinations beyond a fixed relationship catalogue and retain several compatible explanations. New encodings and operators can extend that exploration without changing the observation types.
+
+This complements established inference methods and bounded brute-force search: brute force provides complete answer keys for small cases, while EAs explore spaces too large to enumerate practically. Greater flexibility is a research aim, not a demonstrated accuracy advantage. Reachable structures still depend on the encoding, operators, latent-person bound, and evaluator assumptions; an EA does not guarantee finding every fit or resolving ambiguity in the data. We use reference cases and recorded search histories to measure those limits.
+
 ## What is implemented
 
 ### Inputs: observations taken by the algorithms
