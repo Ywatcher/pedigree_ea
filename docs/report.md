@@ -1,8 +1,5 @@
 # Pedigree EA: Setup and Baseline Results
 
-Oct 7, 2026 · @ywatcher
-
-Copy of the live doc: https://claude.ai/code/artifact/21dbdaac-90e1-41c5-a35e-c0ff4ffcdb05
 
 ## Summary
 
