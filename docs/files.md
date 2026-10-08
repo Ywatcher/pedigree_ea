@@ -13,6 +13,7 @@ Run everything from the repo root, e.g. `conda run -n pedigree_ea python -m pyte
 | `ideas.md` | Design ideas: genotype spaces, operators, mutation size, objectives |
 | `example` | Example relationship chart and notes on test-data sources (not an input format) |
 | `pyproject.toml` | Package metadata; pytest config (`src` on the path, tests in `tests/`) |
+| `requirements.txt` | Key dependencies (core, visualization, tests) with tested versions |
 | `.gitignore` | Ignores bytecode, editor files, and run outputs (`logs/`, `results/`) |
 | `docs/files.md` | This file |
 | `docs/report_01_setup_baselines.md` | Report 1: setup and baseline results |

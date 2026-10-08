@@ -1,0 +1,19 @@
+# Key dependencies of pedigree_ea. Python >= 3.12.
+# Install: python -m pip install -r requirements.txt && python -m pip install -e .
+# Versions in comments are the ones tested (conda env `pedigree_ea`, Python 3.14.8).
+# External tools (KING, PRIMUS, Ped-sim) live in a separate environment, not here.
+
+# Core: pedigree model, kinship/IBD, canonical forms, search
+numpy                 # 2.5.3
+networkx>=3.5         # 3.7; canonical forms rely on >= 3.5 directed-graph behaviour
+deap                  # 1.4; declared in pyproject.toml, not imported by the code at present
+
+# Visualization: pedigree figures and GIF animations
+matplotlib            # 3.11.2
+pillow                # 12.3.0
+
+# Tests
+pytest                # 9.1.1
+pytest-xdist          # 3.8.0; parallel tests with `python -m pytest -n auto`
+
+# Standard library only (nothing to install): sqlite3 run database, http.server explorer.

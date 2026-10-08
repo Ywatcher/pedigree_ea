@@ -142,11 +142,11 @@ Python **3.12 or newer** is required. Run commands from the repository root.
 ```bash
 python -m venv .venv
 source .venv/bin/activate
+python -m pip install -r requirements.txt
 python -m pip install -e .
-python -m pip install pytest matplotlib pillow
 ```
 
-The package declares NumPy, NetworkX, and DEAP as dependencies. Matplotlib and Pillow support visualizations; pytest is for tests. For JupyterLab, also install `jupyterlab` and `ipykernel` into the environment and select that environment's kernel.
+`requirements.txt` lists the key dependencies with the versions tested: NumPy, NetworkX and DEAP (also declared by the package), Matplotlib and Pillow for visualizations, and pytest with pytest-xdist for tests. For JupyterLab, also install `jupyterlab` and `ipykernel` into the environment and select that environment's kernel.
 
 The existing local Conda environment is named `pedigree_ea`. For notebook/API imports, install the package there as well:
 
@@ -276,7 +276,7 @@ Logged runs write progress JSONL to `logs/`, result JSON and summaries to `resul
 python -m pytest
 ```
 
-Optionally install `pytest-xdist` and use `python -m pytest -n auto` for parallel tests.
+Use `python -m pytest -n auto` for parallel tests (`pytest-xdist`, in `requirements.txt`).
 
 | Path | Purpose |
 |---|---|
