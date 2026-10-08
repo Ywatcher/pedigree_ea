@@ -1,1 +1,29 @@
-*.pyc
+# Python bytecode and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# JupyterLab notebook checkpoints
+.ipynb_checkpoints/
+
+# Vim swap, backup, and undo files
+*.swp
+*.swo
+*.swn
+*~
+*.un~
+Session.vim
+
+# Test and packaging artifacts
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Run outputs (see src/pedigree_ea/ea/logger.py); plt/ stays tracked (report figures)
+logs/
+results/
+
+# Downloaded external tools (PRIMUS, Ped-sim, ...); installed in their own conda env
+tools/

@@ -1,0 +1,22 @@
+{
+  "name": "first_cousins",
+  "description": "first cousins",
+  "observed": [
+    "A",
+    "B"
+  ],
+  "source": "synth.STANDARD['first_cousins']",
+  "noise": null,
+  "answer_key": {
+    "method": "brute_force.enumerate_pedigrees",
+    "max_latent": 4,
+    "tol": 1e-06,
+    "check_sex": true,
+    "allow_inbreeding": true,
+    "complete_for_truth_size": true,
+    "n_solutions": 65,
+    "n_outbred": 7,
+    "truth_included": true,
+    "seconds": 0.22
+  }
+}

@@ -1,0 +1,17 @@
+[project]
+name = "pedigree_ea"
+version = "0.1.0"
+description = "Evolutionary algorithms for finding pedigrees compatible with pairwise kinship"
+requires-python = ">=3.12"
+dependencies = ["numpy", "networkx>=3.5", "deap"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

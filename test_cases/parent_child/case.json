@@ -1,0 +1,22 @@
+{
+  "name": "parent_child",
+  "description": "parent child",
+  "observed": [
+    "A",
+    "B"
+  ],
+  "source": "synth.STANDARD['parent_child']",
+  "noise": null,
+  "answer_key": {
+    "method": "brute_force.enumerate_pedigrees",
+    "max_latent": 0,
+    "tol": 1e-06,
+    "check_sex": true,
+    "allow_inbreeding": true,
+    "complete_for_truth_size": true,
+    "n_solutions": 2,
+    "n_outbred": 2,
+    "truth_included": true,
+    "seconds": 0.0
+  }
+}

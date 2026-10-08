@@ -1,0 +1,6 @@
+id	parent1	parent2	sex	observed
+A	L1	0	U	1
+B	A	L2	U	1
+L1	0	0	U	0
+L2	L3	0	U	0
+L3	L1	0	U	0

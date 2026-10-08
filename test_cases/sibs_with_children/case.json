@@ -1,0 +1,25 @@
+{
+  "name": "sibs_with_children",
+  "description": "Three observed siblings; two have an observed child each.",
+  "observed": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E"
+  ],
+  "source": "synth.STANDARD['sibs_with_children']",
+  "noise": null,
+  "answer_key": {
+    "method": "brute_force.enumerate_pedigrees",
+    "max_latent": 2,
+    "tol": 1e-06,
+    "check_sex": true,
+    "allow_inbreeding": true,
+    "complete_for_truth_size": true,
+    "n_solutions": 1,
+    "n_outbred": 1,
+    "truth_included": true,
+    "seconds": 16.72
+  }
+}

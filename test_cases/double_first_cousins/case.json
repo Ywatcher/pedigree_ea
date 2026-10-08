@@ -1,0 +1,22 @@
+{
+  "name": "double_first_cousins",
+  "description": "Two brothers married two sisters.",
+  "observed": [
+    "A",
+    "B"
+  ],
+  "source": "synth.STANDARD['double_first_cousins']",
+  "noise": null,
+  "answer_key": {
+    "method": "brute_force.enumerate_pedigrees",
+    "max_latent": 5,
+    "tol": 1e-06,
+    "check_sex": true,
+    "allow_inbreeding": true,
+    "complete_for_truth_size": false,
+    "n_solutions": 3,
+    "n_outbred": 3,
+    "truth_included": false,
+    "seconds": 6.28
+  }
+}

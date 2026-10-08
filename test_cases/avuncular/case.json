@@ -1,0 +1,22 @@
+{
+  "name": "avuncular",
+  "description": "A is the aunt/uncle of B.",
+  "observed": [
+    "A",
+    "B"
+  ],
+  "source": "synth.STANDARD['avuncular']",
+  "noise": null,
+  "answer_key": {
+    "method": "brute_force.enumerate_pedigrees",
+    "max_latent": 3,
+    "tol": 1e-06,
+    "check_sex": true,
+    "allow_inbreeding": true,
+    "complete_for_truth_size": true,
+    "n_solutions": 23,
+    "n_outbred": 5,
+    "truth_included": true,
+    "seconds": 0.07
+  }
+}

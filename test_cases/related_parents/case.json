@@ -1,0 +1,22 @@
+{
+  "name": "related_parents",
+  "description": "B is the child of first cousins A and L5 (B's parents are related).",
+  "observed": [
+    "A",
+    "B"
+  ],
+  "source": "synth.STANDARD['related_parents']",
+  "noise": null,
+  "answer_key": {
+    "method": "brute_force.enumerate_pedigrees",
+    "max_latent": 5,
+    "tol": 1e-06,
+    "check_sex": true,
+    "allow_inbreeding": true,
+    "complete_for_truth_size": true,
+    "n_solutions": 126,
+    "n_outbred": 0,
+    "truth_included": true,
+    "seconds": 20.15
+  }
+}

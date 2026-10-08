@@ -1,0 +1,48 @@
+this is not an input format
+
+Pair
+Kinship Inferred relationship
+200-100 0.2357First-degree
+300-100 0.2077First-degree
+300-200 0.2560First-degree
+400-100 0.0997Second-degree
+400-200 0.2241First-degree
+400-300 0.1345Second-degree
+500-100 −0.0808 Unrelated/remote
+500-200 −0.0631 Unrelated/remote
+500-300 −0.0717 Unrelated/remote
+500-400 −0.0875 Unrelated/remote
+
+ask codex: where can I get test cases
+
+**Start with Ped-sim’s example pedigrees, then add a few real families from 1000 Genomes.** These give you both known structures and a path to realistic genetic observations.
+
+| Source | What you can get | How it helps your tests |
+|---|---|---|
+| [Ped-sim examples (https://github.com/williamslab/ped-sim/tree/master/example)](<https://github.com/williamslab/ped-sim/tree/master/example>) | Grandparent–grandchild, aunt/uncle–niece/nephew, half siblings, double cousins, and several cousin structures | Small, controlled cases with known pedigrees |
+| [Sequoia example pedigree (https://jiscah.github.io/reference/Ped\_HSg5.html)](<https://jiscah.github.io/reference/Ped_HSg5.html>) | A fictional five-generation pedigree with interconnected half-sibling groups | A larger benchmark; extract small ancestral subgraphs first |
+| [1000 Genomes family information (https://www.internationalgenome.org/faq/how-do-i-find-the-familial-relationships-between-the-individuals/)](<https://www.internationalgenome.org/faq/how-do-i-find-the-familial-relationships-between-the-individuals/>) | Real family relationships in pedigree files, frequently trios and sometimes additional generations | Real-data tests with documented relationships |
+| [PRIMUS example data (https://primus.gs.washington.edu/primusweb/res/documentation.html)](<https://primus.gs.washington.edu/primusweb/res/documentation.html>) | Example pairwise genetic relationship data, including a 1000 Genomes Mexican family example | Testing against the kind of observations used by an existing reconstruction method |
+
+**Ped-sim is particularly useful for your project.** Its `--fam` option exports the full pedigree, including people whose genetic data are not sampled. It can also simulate IBD segments without requiring input genotype data. That lets you retain the true family structure while hiding ancestors from the reconstruction algorithm. [Ped-sim documentation (https://github.com/williamslab/ped-sim)](<https://github.com/williamslab/ped-sim>)
+
+I would organize your first tests into three levels:
+
+1. **Exact tests:** choose a known pedigree and calculate its expected pairwise kinship. These check the evaluator and basic search.
+2. **Hidden-person tests:** keep the same truth pedigree, but expose only selected people and their pairwise values. These test whether the search introduces useful latent ancestors.
+3. **Simulated genetic tests:** simulate inheritance through the pedigree and derive pairwise observations. These capture variation from inheritance; add estimation error separately if needed.
+
+For a first collection, include:
+
+- Parent–child and full siblings.
+- Half siblings, grandparent–grandchild, and avuncular relationships.
+- First cousins and double first cousins.
+- Several siblings with children in the next generation.
+- Two disconnected families.
+- A pedigree with related parents.
+- Different pedigrees that give identical kinship among the observed people.
+
+That last category matters for your goal of finding **many compatible pedigrees**: recovering only the generating pedigree should not be the sole success criterion.
+
+For each case, keep the **truth pedigree**, **observed-person list**, **pairwise observations**, and **source/simulation settings** separately. This describes test contents; you can choose their file format later.
+

@@ -1,0 +1,22 @@
+{
+  "name": "grandparent",
+  "description": "grandparent",
+  "observed": [
+    "A",
+    "B"
+  ],
+  "source": "synth.STANDARD['grandparent']",
+  "noise": null,
+  "answer_key": {
+    "method": "brute_force.enumerate_pedigrees",
+    "max_latent": 1,
+    "tol": 1e-06,
+    "check_sex": true,
+    "allow_inbreeding": true,
+    "complete_for_truth_size": true,
+    "n_solutions": 3,
+    "n_outbred": 3,
+    "truth_included": true,
+    "seconds": 0.0
+  }
+}
