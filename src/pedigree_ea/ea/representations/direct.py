@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ... import batch
+from ...genetics import batch
 from . import dag
 from .base import Representation
 
@@ -40,6 +40,9 @@ class Direct(Representation):
         for _ in range(int(rng.integers(0, self.init_mutations + 1))):
             g, _ = self.mutate(g, rng)
         return g
+
+    def empty(self, rng):
+        return np.full((self.n, 2), dag.MISSING, dtype=np.int16)
 
     def decode(self, g):
         return g

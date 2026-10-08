@@ -17,8 +17,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from pedigree_ea import enumerate_pedigrees, expected_ibd, inbreeding, synth  # noqa: E402
-from pedigree_ea.canonical import PedigreeSet  # noqa: E402
-from pedigree_ea.cases import Case, save_case  # noqa: E402
+from pedigree_ea.genetics.canonical import PedigreeSet  # noqa: E402
+from pedigree_ea.data.cases import Case, save_case  # noqa: E402
 
 
 def main() -> None:

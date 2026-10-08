@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 
 from pedigree_ea import batch, expected_ibd, kinship_matrix, synth
-from pedigree_ea.canonical import same_structure
-from pedigree_ea.ibd import ibd_from_parents
-from pedigree_ea.kinship import kinship_from_parents
+from pedigree_ea.genetics.canonical import same_structure
+from pedigree_ea.genetics.ibd import ibd_from_parents
+from pedigree_ea.genetics.kinship import kinship_from_parents
 
 
 def random_dag(rng, n, p_edge):

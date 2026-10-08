@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedigree run explorer</title>
+<style>
+:root { --bg:#fff; --fg:#1d1d1f; --muted:#6b6b70; --line:#9a9aa0; --card:#f6f6f7; --border:#dcdce0;
+        --latent:#e2e2e6; --accent:#2563eb; --bad:#d62728; --good:#2ca02c; --ref:#eef3fd; --panel:#fbfbfc; }
+@media (prefers-color-scheme: dark) { :root { --bg:#151518; --fg:#ececf0; --muted:#a0a0a8; --line:#77777f;
+  --card:#1f1f24; --border:#34343c; --latent:#3a3a42; --accent:#6ea0ff; --bad:#ff6b6b; --good:#5fd068;
+  --ref:#1c2433; --panel:#1a1a1e; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif; }
+header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+header h1 { font-size:16px; margin:0; }
+header .info { color:var(--muted); font-size:12px; flex-basis:100%; }
+select, button, input { font:inherit; color:var(--fg); background:var(--card); border:1px solid var(--border);
+                        border-radius:6px; padding:3px 8px; }
+button { cursor:pointer; }
+.layout { display:grid; grid-template-columns:260px 1fr; min-height:calc(100vh - 80px); }
+@media (max-width: 800px) { .layout { grid-template-columns:1fr; } }
+aside { border-right:1px solid var(--border); padding:12px 16px; background:var(--panel); font-size:13px; }
+aside h3 { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:14px 0 6px; }
+aside label { display:block; margin:3px 0; }
+main { padding:12px 16px; min-width:0; }
+.timeline { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; }
+.timeline input[type=range] { flex:1 1 260px; accent-color:var(--accent); background:none; border:none; }
+.timeline input[type=number] { width:80px; }
+.status { color:var(--muted); font-size:12px; margin:6px 0; font-variant-numeric:tabular-nums; }
+#chart { width:100%; display:block; cursor:crosshair; margin:6px 0 10px; }
+section { margin:14px 0; }
+section h2 { font-size:14px; margin:0 0 6px; }
+section h2 small { color:var(--muted); font-weight:400; }
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px; cursor:pointer; }
+.card:hover { border-color:var(--accent); }
+.card.ref { background:var(--ref); cursor:default; }
+.card.alert { border:3px solid var(--bad); }
+.card .head { font-size:12px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.badge { font-size:11px; padding:0 6px; border-radius:8px; border:1px solid var(--border); color:var(--muted); }
+.badge.fit { color:var(--good); border-color:var(--good); }
+.badge.bad { color:var(--bad); border-color:var(--bad); }
+.card svg { width:100%; height:170px; display:block; }
+.props { font-size:11.5px; color:var(--muted); }
+.props div { margin:1px 0; }
+.empty { color:var(--muted); font-size:12px; }
+#detail { position:fixed; top:0; right:0; width:min(560px,100%); height:100vh; overflow:auto; background:var(--bg);
+          border-left:1px solid var(--border); box-shadow:-4px 0 16px rgba(0,0,0,.15); padding:14px 16px; display:none; }
+#detail.open { display:block; }
+#detail svg { width:100%; height:300px; display:block; }
+table { border-collapse:collapse; font-size:12px; width:100%; font-variant-numeric:tabular-nums; }
+th, td { border-bottom:1px solid var(--border); padding:3px 5px; text-align:right; }
+th:first-child, td:first-child { text-align:left; }
+a { color:var(--accent); cursor:pointer; }
+.err { color:var(--bad); }
+</style></head><body>
+<header>
+  <h1>Pedigree run explorer</h1>
+  <label>Run <select id="run"></select></label>
+  <div class="info" id="info"></div>
+</header>
+<div class="layout">
+<aside>
+  <h3>References</h3><div id="refs" class="empty">none in this database</div>
+  <label>Closest per reference <input type="number" id="k" min="1" max="10" value="1" style="width:56px"></label>
+  <h3>Sections</h3><div id="sections"></div>
+  <h3>Properties</h3><div id="props"></div>
+  <h3>Chart</h3><div id="series"></div>
+</aside>
+<main>
+  <div class="timeline">
+    <button id="first" title="first generation">|&lt;</button>
+    <button id="prev" title="previous generation (left arrow)">&lt;</button>
+    <button id="play">Play</button>
+    <button id="next" title="next generation (right arrow)">&gt;</button>
+    <button id="last" title="last generation">&gt;|</button>
+    <input type="range" id="slider" min="1" value="1">
+    <label>Generation <input type="number" id="gen" min="1" value="1"></label>
+    <select id="jump"><option value="">Jump to event…</option></select>
+    <label>Speed <select id="speed"><option value="500">slow</option><option value="200" selected>normal</option><option value="60">fast</option></select></label>
+  </div>
+  <div class="status" id="status"></div>
+  <svg id="chart"></svg>
+  <div id="frame"></div>
+</main>
+</div>
+<div id="detail"></div>
+<script>
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const SECTIONS = [["references", "References"], ["best", "Best in population"], ["closest", "Closest to reference"],
+  ["removed", "Removed closest"], ["latest_fit", "Latest fit"], ["pareto", "Pareto front of population"],
+  ["population", "Whole population"]];
+const PROPS = [["objectives", "Objectives (current code)"], ["entry", "Objectives at entry"], ["fit", "Fit / worst pair error"],
+  ["distances", "Distances to references"], ["structure", "Latent people / inbred"], ["count", "Copies in population"],
+  ["lineage", "Lineage (first generation, operator)"]];
+const store = { get(k, d) { try { const v = localStorage.getItem("pedviz:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+                set(k, v) { try { localStorage.setItem("pedviz:" + k, JSON.stringify(v)); } catch (e) {} } };
+let S = { runs: [], run: null, meta: null, series: null, gen: 1, timer: null, frames: new Map(), pending: null,
+          sections: new Set(store.get("sections", ["references", "best", "closest", "removed", "latest_fit", "pareto"])),
+          props: new Set(store.get("props", ["objectives", "fit", "distances", "structure", "lineage"])),
+          chart: new Set(store.get("chart", ["n_fits", "distinct"])), refs: new Set() };
+
+async function api(path) {
+  const r = await fetch(path); const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText); return j;
+}
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function h(tag, props, ...kids) { const e = document.createElement(tag); Object.assign(e, props || {});
+  kids.forEach(k => e.append(k)); return e; }
+const fmt = v => v === null || v === undefined ? "–" : (typeof v === "number" ? (Number.isInteger(v) ? String(v) : v.toPrecision(3)) : String(v));
+
+function draw(svg, lay, note) {
+  svg.innerHTML = "";
+  if (!lay || !lay.nodes || !lay.nodes.length) { const t = el("text", {x:"50%", y:"50%", "text-anchor":"middle", fill:"var(--muted)"}, svg);
+    t.textContent = (lay && lay.error) || note || "none"; return; }
+  const xs = lay.nodes.map(n => n.x), ys = lay.nodes.map(n => n.y);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const w = Math.max(Math.max(...xs) - Math.min(...xs) + 1.6, 5), hh = Math.max(Math.max(...ys) - Math.min(...ys) + 1.4, 3.6);
+  svg.setAttribute("viewBox", `${(cx - w / 2) * 100} ${(cy - hh / 2) * 100} ${w * 100} ${hh * 100}`);
+  const id = "a" + Math.random().toString(36).slice(2);
+  const m = el("marker", {id, viewBox:"0 0 10 10", refX:"9", refY:"5", markerWidth:"7", markerHeight:"7", orient:"auto-start-reverse"}, el("defs", {}, svg));
+  el("path", {d:"M0 0L10 5L0 10z", fill:"var(--line)"}, m);
+  const pos = {}; lay.nodes.forEach(n => pos[n.id] = [n.x * 100, n.y * 100]);
+  lay.edges.forEach(([p, c]) => { const [ax, ay] = pos[p], [bx, by] = pos[c];
+    const dx = bx - ax, dy = by - ay, d = Math.hypot(dx, dy) || 1, r = 26;
+    el("line", {x1: ax + dx / d * r, y1: ay + dy / d * r, x2: bx - dx / d * r, y2: by - dy / d * r,
+      stroke:"var(--line)", "stroke-width":"2", "marker-end":`url(#${id})`}, svg); });
+  lay.nodes.forEach(n => { const [x, y] = pos[n.id];
+    const ring = n.inbred ? "var(--bad)" : "rgba(0,0,0,.35)", sw = n.inbred ? 5 : 1.5;
+    if (n.observed) el("circle", {cx:x, cy:y, r:24, fill:(S.meta && S.meta.colors[n.id]) || "var(--accent)", stroke:ring, "stroke-width":sw}, svg);
+    else el("rect", {x:x - 19, y:y - 19, width:38, height:38, rx:4, fill:"var(--latent)", stroke:ring, "stroke-width":sw}, svg);
+    const t = el("text", {x, y:y + 5, "text-anchor":"middle", "font-size":n.observed ? 15 : 13,
+      "font-weight":n.observed ? 700 : 400, fill:n.observed ? "#fff" : "var(--fg)"}, svg);
+    t.textContent = n.id; }); }
+
+// ---- controls --------------------------------------------------------------
+function checkboxes(container, items, set, key, onchange) {
+  container.innerHTML = "";
+  items.forEach(([value, label]) => { const cb = h("input", {type:"checkbox", checked:set.has(value)});
+    cb.onchange = () => { cb.checked ? set.add(value) : set.delete(value); if (key) store.set(key, [...set]); onchange(); };
+    container.append(h("label", {}, cb, " " + label)); });
+}
+function refsQuery() { return [...S.refs].join(","); }
+
+async function loadRuns() {
+  const data = await api("/api/runs"); S.runs = data.runs;
+  document.title = "Runs · " + data.db.split("/").pop();
+  const sel = $("run"); sel.innerHTML = "";
+  const groups = {};
+  S.runs.forEach(r => { const g = `${r.grid || "runs"} · ${r.case || ""}`; (groups[g] = groups[g] || []).push(r); });
+  for (const [g, rs] of Object.entries(groups)) { const og = h("optgroup", {label:g});
+    rs.forEach(r => og.append(h("option", {value:r.id, textContent:`${r.label} · seed ${r.seed} · ${r.generations} gen` +
+      (r.score && r.score.recall !== undefined && r.score.recall !== null ? ` · recall ${fmt(r.score.recall)}` : "")})));
+    sel.append(og); }
+  const url = new URLSearchParams(location.search);
+  const want = url.has("run") ? +url.get("run") : store.get("run", null);
+  if (url.has("gen")) S.gen = +url.get("gen");
+  if (want && S.runs.some(r => r.id === want)) sel.value = want;
+  sel.onchange = () => selectRun(+sel.value);
+  if (S.runs.length) await selectRun(+sel.value);
+  else $("frame").textContent = "No runs in this database.";
+}
+
+async function selectRun(id) {
+  stop(); store.set("run", id); S.frames.clear();
+  S.meta = await api(`/api/run/${id}`); S.run = id;
+  const m = S.meta;
+  $("info").textContent = `${m.case || ""} · ${m.label} · seed ${m.seed} · ${m.kind} target · objectives: ${m.objectives.join(", ")}` +
+    ` · max latent ${m.config.max_latent}, tol ${m.config.tol}` + (m.score && m.score.recall != null ? ` · recall ${fmt(m.score.recall)}` : "") +
+    (m.summary ? ` · ${m.summary.n_fits} fits, ${m.summary.n_evals} evaluations` : "");
+  const labels = m.references.map(r => r.label);
+  const savedRefs = store.get("refs", null);
+  S.refs = new Set(labels.filter(l => !savedRefs || savedRefs.includes(l)));
+  if (labels.length) checkboxes($("refs"), labels.map(l => [l, l]), S.refs, "refs", refresh);
+  else $("refs").textContent = "none (add with --reference)";
+  checkboxes($("sections"), SECTIONS, S.sections, "sections", render);
+  checkboxes($("props"), PROPS, S.props, "props", render);
+  $("slider").max = m.generations; $("gen").max = m.generations;
+  S.gen = Math.min(S.gen, m.generations) || 1;
+  await refresh();
+}
+
+async function refresh() {
+  S.frames.clear();
+  S.series = await api(`/api/run/${S.run}/series?refs=${refsQuery()}`);
+  const items = [["n_fits", "Fits found"], ["distinct", "Distinct in population"], ["n_phenotypes", "Distinct evaluated"],
+    ...S.meta.objectives.map(o => ["best:" + o, "Best " + o]), ...Object.keys(S.series.closest).map(r => ["closest:" + r, "Edits to " + r])];
+  checkboxes($("series"), items, S.chart, "chart", drawChart);
+  const jump = $("jump"); jump.innerHTML = '<option value="">Jump to event…</option>';
+  if (S.series.first_fit_gen) jump.append(h("option", {value:S.series.first_fit_gen, textContent:`first fit · gen ${S.series.first_fit_gen}`}));
+  for (const [r, vals] of Object.entries(S.series.closest)) { const g = vals.indexOf(0);
+    if (g >= 0) jump.append(h("option", {value:g + 1, textContent:`${r} in population · gen ${g + 1}`})); }
+  S.series.events.forEach(e => jump.append(h("option", {value:e.generation,
+    textContent:`removed closest to ${e.reference} · gen ${e.generation} (${e.distance_before}→${e.distance_after} edits)`})));
+  drawChart(); await go(S.gen);
+}
+
+// ---- chart -------------------------------------------------------------------
+function seriesValues(key) {
+  const s = S.series; if (!s) return null;
+  if (key.startsWith("best:")) return s.best[key.slice(5)];
+  if (key.startsWith("closest:")) return s.closest[key.slice(8)];
+  return s[key];
+}
+function drawChart() {
+  const svg = $("chart"); svg.innerHTML = "";
+  if (!S.series) return;
+  const keys = [...S.chart].filter(k => seriesValues(k)), n = S.series.gen.length;
+  const W = 1000, rowH = 54, top = 6, left = 150, right = 10, H = top + Math.max(keys.length, 1) * rowH + 22;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.style.height = (H * Math.min(1, svg.clientWidth / W || 1)) + "px";
+  const X = g => left + (g - 1) / Math.max(n - 1, 1) * (W - left - right);
+  keys.forEach((key, i) => { const vals = seriesValues(key), y0 = top + i * rowH, y1 = y0 + rowH - 12;
+    const lo = Math.min(...vals), hi = Math.max(...vals), Y = v => hi === lo ? (y0 + y1) / 2 : y1 - (v - lo) / (hi - lo) * (y1 - y0);
+    el("line", {x1:left, x2:W - right, y1:y1, y2:y1, stroke:"var(--border)"}, svg);
+    el("polyline", {points:vals.map((v, j) => `${X(j + 1)},${Y(v)}`).join(" "), fill:"none",
+      stroke:key.startsWith("closest:") ? "var(--bad)" : "var(--accent)", "stroke-width":1.5}, svg);
+    const t = el("text", {x:4, y:y0 + 14, "font-size":12, fill:"var(--fg)"}, svg); t.textContent = labelFor(key);
+    const r = el("text", {x:4, y:y0 + 30, "font-size":11, fill:"var(--muted)"}, svg); r.textContent = `${fmt(lo)} – ${fmt(hi)}`; });
+  if (!keys.length) { const t = el("text", {x:W / 2, y:30, "text-anchor":"middle", fill:"var(--muted)"}, svg); t.textContent = "choose chart series on the left"; }
+  const ey = H - 16;
+  S.series.events.forEach(e => el("line", {x1:X(e.generation), x2:X(e.generation), y1:ey, y2:ey + 10, stroke:"var(--bad)", "stroke-width":2}, svg));
+  if (S.series.first_fit_gen) el("line", {x1:X(S.series.first_fit_gen), x2:X(S.series.first_fit_gen), y1:ey, y2:ey + 10, stroke:"var(--good)", "stroke-width":2}, svg);
+  const ax = el("text", {x:4, y:ey + 9, "font-size":11, fill:"var(--muted)"}, svg); ax.textContent = "removed / first fit";
+  el("line", {id:"cursor", x1:X(S.gen), x2:X(S.gen), y1:0, y2:H, stroke:"var(--fg)", "stroke-dasharray":"3 3"}, svg);
+  svg.onclick = ev => { const box = svg.getBoundingClientRect(), x = (ev.clientX - box.left) / box.width * W;
+    stop(); go(Math.round((x - left) / (W - left - right) * (n - 1)) + 1); };
+  svg._X = X;
+}
+function labelFor(key) {
+  if (key.startsWith("best:")) return "Best " + key.slice(5);
+  if (key.startsWith("closest:")) return "Edits to " + key.slice(8);
+  return {n_fits:"Fits found", distinct:"Distinct in population", n_phenotypes:"Distinct evaluated"}[key] || key;
+}
+
+// ---- frames ------------------------------------------------------------------
+async function getFrame(gen) {
+  const key = `${S.run}|${gen}|${refsQuery()}|${$("k").value}`;
+  if (!S.frames.has(key)) S.frames.set(key, api(`/api/run/${S.run}/frame?gen=${gen}&refs=${refsQuery()}&k=${$("k").value}`));
+  return S.frames.get(key);
+}
+async function go(gen) {
+  if (!S.meta) return;
+  gen = Math.max(1, Math.min(S.meta.generations, gen | 0)); S.gen = gen;
+  $("slider").value = gen; $("gen").value = gen;
+  try { history.replaceState(null, "", `?run=${S.run}&gen=${gen}`); } catch (e) {}
+  const c = document.getElementById("cursor"); if (c && $("chart")._X) { c.setAttribute("x1", $("chart")._X(gen)); c.setAttribute("x2", $("chart")._X(gen)); }
+  const token = S.pending = {};
+  try { const f = await getFrame(gen); if (token !== S.pending) return; S.frame = f; render(); }
+  catch (e) { $("frame").innerHTML = ""; $("frame").append(h("div", {className:"err", textContent:e.message})); }
+}
+
+function propLines(c) {
+  const out = [], P = S.props, obj = S.meta.objectives;
+  if (P.has("objectives")) out.push(obj.map((o, i) => `${o}=${fmt(c.objectives[i])}`).join(", "));
+  if (P.has("entry") && c.entry_objectives) out.push("at entry: " + obj.map((o, i) => `${o}=${fmt(c.entry_objectives[i])}`).join(", "));
+  if (P.has("fit")) out.push(c.valid ? (c.fits ? "fits" : `worst pair error ${fmt(c.worst_error)}`) : "invalid");
+  if (P.has("distances")) for (const [r, d] of Object.entries(c.distances || {})) out.push(`to ${r}: ${d.structure} edits, IBD diff ${fmt(d.relationship)}`);
+  if (P.has("structure")) out.push(`${c.n_latent} latent${c.inbred ? " · inbred" : ""}`);
+  if (P.has("count") && c.count) out.push(`${c.count}× in population`);
+  if (P.has("lineage") && c.first_gen) out.push(`first in gen ${c.first_gen}` + (c.operator ? ` via ${c.operator}` : "") +
+    (c.parents && c.parents.length ? ` from #${c.parents.join(", #")}` : ""));
+  return out;
+}
+function cardEl(c, opts = {}) {
+  const d = h("div", {className:"card" + (opts.alert ? " alert" : "") + (opts.ref ? " ref" : "")});
+  const head = h("div", {className:"head"}, h("b", {textContent:opts.title || `#${c.cid}`}));
+  if (!opts.ref) { if (!c.valid) head.append(h("span", {className:"badge bad", textContent:"invalid"}));
+    else if (c.fits) head.append(h("span", {className:"badge fit", textContent:"fits"}));
+    if (c.inbred) head.append(h("span", {className:"badge bad", textContent:"inbred"})); }
+  d.append(head);
+  const svg = el("svg", {}); d.append(svg); draw(svg, c.layout);
+  const props = h("div", {className:"props"});
+  (opts.lines || []).forEach(l => props.append(h("div", {textContent:l})));
+  if (!opts.ref) propLines(c).forEach(l => props.append(h("div", {textContent:l})));
+  d.append(props);
+  if (!opts.ref) d.onclick = () => openDetail(c.cid);
+  return d;
+}
+function section(title, sub, cards) {
+  const s = h("section", {}, h("h2", {}, title, sub ? h("small", {textContent:" " + sub}) : ""));
+  const grid = h("div", {className:"cards"}); cards.forEach(c => grid.append(c));
+  if (!cards.length) grid.append(h("div", {className:"empty", textContent:"none"}));
+  s.append(grid); return s;
+}
+function render() {
+  const f = S.frame, out = $("frame"); if (!f) return; out.innerHTML = "";
+  $("status").textContent = `generation ${f.gen} / ${S.meta.generations} · ${f.evals.toLocaleString()} evaluations · ` +
+    `population ${f.population} (${f.distinct} distinct) · ${f.n_fits} fits so far · ${f.seconds}s`;
+  const has = k => S.sections.has(k);
+  if (has("references") && S.meta.references.length)
+    out.append(section("References", "fixed; never shown to the search",
+      S.meta.references.filter(r => S.refs.has(r.label)).map(r => cardEl({layout:r.layout}, {ref:true, title:r.label}))));
+  if (has("best")) out.append(section("Best in population", "lexicographic on the objectives", [cardEl(f.best)]));
+  if (has("closest")) for (const [r, cs] of Object.entries(f.closest))
+    out.append(section(`Closest to ${r}`, "fewest edits, then smallest IBD difference", cs.map(c => cardEl(c))));
+  if (has("removed")) for (const r of Object.keys(f.closest)) { const e = f.removed[r];
+    out.append(section(`Removed closest to ${r}`, e ? `generation ${e.generation}${e.new ? " (this generation)" : ""}` : "none so far",
+      e ? [cardEl(e.card, {alert:e.new, lines:[`removed in generation ${e.generation}: was ${e.distance_before} edits away`,
+        `replaced as closest by #${e.replaced_by} (${e.distance_after} edits)`]})] : [])); }
+  if (has("latest_fit")) out.append(section("Latest fit", f.latest_fit ? `found at evaluation ${f.latest_fit.found_at_eval.toLocaleString()}` : "",
+    f.latest_fit ? [cardEl(f.latest_fit)] : []));
+  if (has("pareto")) out.append(section("Pareto front of population", `${f.pareto.length} candidates`, f.pareto.map(c => cardEl(c))));
+  if (has("population")) out.append(section("Whole population", `${f.distinct} distinct, sorted by Pareto rank`, f.members.map(c => cardEl(c))));
+}
+
+// ---- detail ------------------------------------------------------------------
+async function openDetail(cid) {
+  const d = $("detail"); d.className = "open"; d.innerHTML = "loading…";
+  let c; try { c = await api(`/api/run/${S.run}/candidate/${cid}?refs=${refsQuery()}`); }
+  catch (e) { d.textContent = e.message; return; }
+  d.innerHTML = "";
+  d.append(h("div", {style:"display:flex;justify-content:space-between;align-items:center"},
+    h("h2", {textContent:`Candidate #${cid}`, style:"font-size:16px;margin:0"}), h("button", {textContent:"Close", onclick:() => d.className = ""})));
+  const svg = el("svg", {}); d.append(svg); draw(svg, c.layout);
+  const obj = S.meta.objectives, props = h("div", {className:"props", style:"font-size:13px"});
+  [`objectives (current code): ${obj.map((o, i) => `${o}=${fmt(c.objectives[i])}`).join(", ")}`,
+   c.entry_objectives ? `objectives at entry: ${obj.map((o, i) => `${o}=${fmt(c.entry_objectives[i])}`).join(", ")}` : null,
+   c.valid ? (c.fits ? "fits within tolerance" : `worst pair error ${fmt(c.worst_error)}`) : "invalid",
+   `${c.n_latent} latent people${c.inbred ? ", inbred" : ""}`,
+   ...Object.entries(c.distances || {}).map(([r, x]) => `to ${r}: ${x.structure} edits, IBD diff ${fmt(x.relationship)}`),
+   c.first_gen ? `first appeared in generation ${c.first_gen} (evaluation ${fmt(c.first_eval)})${c.operator ? " via " + c.operator : ""}` : "not in this run's lineage records",
+   c.fit_at_eval != null ? `became a fit at evaluation ${c.fit_at_eval}` : null].filter(Boolean)
+   .forEach(t => props.append(h("div", {textContent:t})));
+  d.append(props);
+  if (c.first_gen) d.append(h("p", {}, h("a", {textContent:`Jump to generation ${c.first_gen}`, onclick:() => { stop(); go(c.first_gen); }})));
+  if (c.parents && c.parents.length) { const p = h("p", {}, "Parents: ");
+    c.parents.forEach((pid, i) => { if (i) p.append(", "); p.append(h("a", {textContent:"#" + pid, onclick:() => openDetail(pid)})); });
+    d.append(p); }
+  const k = c.kind, cols = k === "ibd" ? [["obs_ibd0", "obs IBD0"], ["pred_ibd0", "pred IBD0"], ["obs_ibd1", "obs IBD1"], ["pred_ibd1", "pred IBD1"], ["obs_ibd2", "obs IBD2"], ["pred_ibd2", "pred IBD2"]]
+    : k === "king" ? [["obs_kinship", "obs kinship"], ["pred_kinship", "pred kinship"], ["obs_ibs0", "obs IBS0"], ["pred_ibs0", "pred IBS0"], ["obs_ibd0", "obs IBD0~"], ["pred_ibd0", "pred IBD0"], ["pred_ibd1", "pred IBD1"], ["pred_ibd2", "pred IBD2"]]
+    : [["obs_kinship", "obs kinship"], ["pred_kinship", "pred kinship"], ["pred_ibd0", "pred IBD0"], ["pred_ibd1", "pred IBD1"], ["pred_ibd2", "pred IBD2"]];
+  const table = h("table", {}, h("tr", {}, h("th", {textContent:"pair"}), ...cols.map(([, t]) => h("th", {textContent:t}))));
+  c.per_pair.forEach(r => table.append(h("tr", {}, h("td", {textContent:r.pair}), ...cols.map(([key]) => h("td", {textContent:fmt(r[key])})))));
+  d.append(h("h3", {textContent:"Per pair: observed vs predicted", style:"font-size:13px;margin:14px 0 6px"}), table);
+}
+
+// ---- timeline ----------------------------------------------------------------
+function stop() { clearInterval(S.timer); S.timer = null; $("play").textContent = "Play"; }
+function play() { if (S.timer) return stop(); $("play").textContent = "Pause";
+  S.timer = setInterval(async () => { if (S.gen >= S.meta.generations) return stop(); await go(S.gen + 1); }, +$("speed").value); }
+$("first").onclick = () => { stop(); go(1); };
+$("last").onclick = () => { stop(); go(S.meta.generations); };
+$("prev").onclick = () => { stop(); go(S.gen - 1); };
+$("next").onclick = () => { stop(); go(S.gen + 1); };
+$("play").onclick = () => { if (S.gen >= S.meta.generations) S.gen = 1; play(); };
+$("speed").onchange = () => { if (S.timer) { stop(); play(); } };
+let slideTimer = null;
+$("slider").oninput = e => { stop(); clearTimeout(slideTimer); const g = +e.target.value; $("gen").value = g;
+  slideTimer = setTimeout(() => go(g), 40); };
+$("gen").onchange = e => { stop(); go(+e.target.value); };
+$("jump").onchange = e => { if (e.target.value) { stop(); go(+e.target.value); } e.target.value = ""; };
+$("k").onchange = () => { S.frames.clear(); go(S.gen); };
+document.addEventListener("keydown", e => { if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.key === "ArrowRight") { stop(); go(S.gen + 1); } if (e.key === "ArrowLeft") { stop(); go(S.gen - 1); }
+  if (e.key === "Escape") $("detail").className = ""; });
+window.addEventListener("resize", drawChart);
+loadRuns().catch(e => { $("frame").append(h("div", {className:"err", textContent:e.message})); });
+</script></body></html>

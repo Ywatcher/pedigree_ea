@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import numpy as np  # noqa: E402
 
-from pedigree_ea.cases import list_cases, load_case  # noqa: E402
+from pedigree_ea.data.cases import list_cases, load_case  # noqa: E402
 from pedigree_ea.ea import IMPLEMENTED, RunLogger, Stopping, baseline_config, make_stamp, run_case  # noqa: E402
 
 

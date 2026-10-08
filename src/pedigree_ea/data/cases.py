@@ -16,10 +16,10 @@ from pathlib import Path
 from typing import Any
 
 from . import io
-from .ibd import IBDData
-from .king import KingData
-from .kinship import KinshipData
-from .pedigree import Pedigree
+from ..genetics.ibd import IBDData
+from ..genetics.king import KingData
+from ..genetics.kinship import KinshipData
+from ..genetics.pedigree import Pedigree
 
 
 @dataclass

@@ -3,7 +3,7 @@ import pytest
 
 from pedigree_ea import (IBD, IBDData, Pedigree, expected_ibd, ibd_errors, jacquard,
                          kinship_matrix, synth)
-from pedigree_ea.ibd import kinship_from_jacquard
+from pedigree_ea.genetics.ibd import kinship_from_jacquard
 
 
 @pytest.mark.parametrize("name, expected", [
@@ -86,7 +86,7 @@ def test_jacquard_consistent_with_kinship():
 
 
 def test_fast_path_matches_full_jacquard():
-    from pedigree_ea.ibd import ibd_from_jacquard
+    from pedigree_ea.genetics.ibd import ibd_from_jacquard
     peds = inbred_pedigrees() + [synth.random_pedigree(seed=s, allow_inbreeding=True,
                                                       p_marry_within=0.6, n_generations=4)
                                 for s in range(10)]

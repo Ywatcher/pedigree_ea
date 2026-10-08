@@ -15,9 +15,9 @@ from typing import Callable
 
 import numpy as np
 
-from .ibd import IBDData, expected_ibd
-from .kinship import KinshipData, expected_kinship
-from .pedigree import FEMALE, MALE, Pedigree
+from ..genetics.ibd import IBDData, expected_ibd
+from ..genetics.kinship import KinshipData, expected_kinship
+from ..genetics.pedigree import FEMALE, MALE, Pedigree
 
 
 def _build(rows: list[tuple]) -> Pedigree:

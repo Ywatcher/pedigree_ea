@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ... import batch
+from ...genetics import batch
 from .base import Representation
 
 
@@ -49,6 +49,10 @@ class CGP(Representation):
         inputs = np.array([[self._draw(t, rng), self._draw(t, rng)] for t in range(self.n)],
                           dtype=np.int16)
         return Genome(order, inputs)
+
+    def empty(self, rng):
+        return Genome(rng.permutation(self.n).astype(np.int16),
+                      np.full((self.n, 2), -1, dtype=np.int16))
 
     def decode(self, g):
         parents = np.full((self.n, 2), -1, dtype=np.int16)

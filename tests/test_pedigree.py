@@ -1,7 +1,7 @@
 import pytest
 
 from pedigree_ea import FEMALE, MALE, Pedigree, PedigreeError
-from pedigree_ea.synth import full_sibs, grandparent
+from pedigree_ea.data.synth import full_sibs, grandparent
 
 
 def test_topological_order_parents_first():

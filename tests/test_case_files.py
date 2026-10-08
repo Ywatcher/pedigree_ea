@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from pedigree_ea import PedigreeSet, expected_ibd
-from pedigree_ea.cases import list_cases, load_case
+from pedigree_ea.data.cases import list_cases, load_case
 
 CASES = list_cases(Path(__file__).resolve().parents[1] / "test_cases")
 

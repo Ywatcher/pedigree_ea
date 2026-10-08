@@ -13,6 +13,9 @@ Available phenotype objectives:
     ibd_total    sum of per-pair errors
     ibd_worst    largest per-pair error
     n_bad_pairs  number of pairs with error > tol
+    excess_total sum over pairs of max(0, error - tol): every pedigree within
+                 tolerance scores 0, so fits are not ranked by how well they fit noise
+    excess_worst max(0, largest per-pair error - tol)
     n_latent     latent people that matter (kept by Pedigree.pruned)
     inbreeding   sum of inbreeding coefficients over observed and relevant latent people
 
@@ -26,13 +29,14 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .. import batch
-from ..ibd import IBDData
-from ..king import KingData
-from ..kinship import KinshipData
+from ..genetics import batch
+from ..genetics.ibd import IBDData
+from ..genetics.king import KingData
+from ..genetics.kinship import KinshipData
 
 PENALTY = 1e6
-OBJECTIVES = ("ibd_total", "ibd_worst", "n_bad_pairs", "n_latent", "inbreeding")
+OBJECTIVES = ("ibd_total", "ibd_worst", "n_bad_pairs", "excess_total", "excess_worst",
+              "n_latent", "inbreeding")
 
 
 @dataclass
@@ -118,6 +122,8 @@ class Problem:
             "ibd_total": err.sum(axis=1),
             "ibd_worst": err.max(axis=1, initial=0.0),
             "n_bad_pairs": (err > self.tol).sum(axis=1).astype(float),
+            "excess_total": np.maximum(err - self.tol, 0.0).sum(axis=1),
+            "excess_worst": np.maximum(err.max(axis=1, initial=0.0) - self.tol, 0.0),
             "n_latent": relevant.sum(axis=1).astype(float),
         }
         if "inbreeding" in self.objectives:

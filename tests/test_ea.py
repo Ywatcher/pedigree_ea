@@ -6,8 +6,8 @@ import pytest
 from pedigree_ea import batch, expected_ibd, synth
 from pedigree_ea.ea import (IMPLEMENTED, REPRESENTATIONS, Problem, RunLogger, Stopping,
                             baseline_config, run, run_case)
-from pedigree_ea.ea.selection import crowding, dominance, nondominated_ranks, nsga2_select
-from pedigree_ea.cases import Case
+from pedigree_ea.ea.pareto import crowding, dominance, nondominated_ranks, nsga2_select
+from pedigree_ea.data.cases import Case
 
 
 # ---- representation contract (run for every implemented representation) -------
@@ -132,4 +132,6 @@ def test_logger_writes_files_with_shared_stamp(tmp_path):
     assert any("generation" in r for r in records)
     saved = json.loads(res.read_text())
     assert saved["stamp"] == "STAMP" and saved["summary"]["n_fits"] >= 1
-    assert list((tmp_path / "results" / "test_STAMP_solutions").glob("*.tsv"))
+    assert (tmp_path / "results" / "db" / "test_STAMP.sqlite").exists()   # run record, same stamp
+    assert saved["db_run_id"] == 1
+    assert not (tmp_path / "results" / "test_STAMP_solutions").exists()   # TSVs only on request

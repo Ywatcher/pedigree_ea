@@ -11,11 +11,11 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .. import batch
-from ..canonical import PedigreeSet
-from ..pedigree import Pedigree
+from ..genetics import batch
+from ..genetics.canonical import PedigreeSet
+from ..genetics.pedigree import Pedigree
 from .problem import Evaluation, Problem
-from .selection import dominates
+from .pareto import dominates
 
 
 @dataclass

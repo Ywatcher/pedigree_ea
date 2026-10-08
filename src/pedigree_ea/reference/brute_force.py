@@ -19,11 +19,11 @@ from __future__ import annotations
 
 from itertools import combinations
 
-from .canonical import PedigreeSet
-from .ibd import IBDData, ibd_from_parents
-from .king import KingData
-from .kinship import KinshipData, inbreeding, kinship_from_parents
-from .pedigree import Pedigree
+from ..genetics.canonical import PedigreeSet
+from ..genetics.ibd import IBDData, ibd_from_parents
+from ..genetics.king import KingData
+from ..genetics.kinship import KinshipData, inbreeding, kinship_from_parents
+from ..genetics.pedigree import Pedigree
 
 
 def _kinship_checks(target: KinshipData, tol: float):

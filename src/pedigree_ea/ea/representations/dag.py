@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ... import batch
+from ...genetics import batch
 
 MISSING = batch.MISSING
 

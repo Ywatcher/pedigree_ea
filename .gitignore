@@ -21,9 +21,20 @@ Session.vim
 build/
 dist/
 
-# Run outputs (see src/pedigree_ea/ea/logger.py); plt/ stays tracked (report figures)
+# Run outputs (see src/pedigree_ea/ea/experiments/logger.py); plt/ stays tracked (report figures)
 logs/
+# results/ includes results/db/ (run-record databases and grid shards)
 results/
+plt/anim_*
+
+# Run-record databases written elsewhere, and SQLite temporary files
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 
 # Downloaded external tools (PRIMUS, Ped-sim, ...); installed in their own conda env
 tools/
+
+# Pictures shared in conversations (not part of the project)
+conversation_pic/

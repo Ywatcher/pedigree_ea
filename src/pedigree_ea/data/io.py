@@ -27,10 +27,10 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from .ibd import IBD, IBDData
-from .king import KingData
-from .kinship import KinshipData
-from .pedigree import Pedigree, PedigreeError
+from ..genetics.ibd import IBD, IBDData
+from ..genetics.king import KingData
+from ..genetics.kinship import KinshipData
+from ..genetics.pedigree import Pedigree, PedigreeError
 
 MISSING = "0"
 PEDIGREE_COLUMNS = ["id", "parent1", "parent2", "sex", "observed"]
@@ -126,6 +126,37 @@ def read_king_ibd(path: str | Path, unrelated_ibs0: float | None = None) -> tupl
     Returns (data, IBS0 baseline used). See ibd.ibd_from_kinship_ibs0 for caveats."""
     data = read_king(path, unrelated_ibs0)
     return data.approx_ibd(), data.unrelated_ibs0
+
+
+def read_pairwise(path: str | Path, target: str = "king", unrelated_ibs0: float | None = None
+                  ) -> tuple[IBDData | KinshipData | KingData, str, str]:
+    """Read pairwise data by file type. Returns (data, kind, description).
+
+    .kin0/.kin   KING-robust table; `target` = "king" (kinship + IBS0, default),
+                 "ibd" (approximate IBD0/1/2) or "kinship" (negatives set to 0)
+    .genome      PLINK --genome (IBD)        .seg   KING --ibdseg (IBD)
+    .csv         IBD CSV (id1,id2,ibd0,ibd1,ibd2)
+    """
+    path = Path(path)
+    suffix = path.suffix.lower()
+    if suffix in (".kin0", ".kin"):
+        if target == "kinship":
+            return read_king_kinship(path, clip_negative=True), "kinship", \
+                "KING kinship, negative values set to 0"
+        data = read_king(path, unrelated_ibs0)
+        base = f"unrelated IBS0 baseline {data.unrelated_ibs0:.4f}"
+        if target == "ibd":
+            return data.approx_ibd(), "ibd", f"approximate IBD from KING kinship + IBS0 ({base})"
+        if target != "king":
+            raise ValueError(f"target must be 'king', 'ibd' or 'kinship', got {target!r}")
+        return data, "king", f"KING kinship + IBS0 -> IBD0 ({base})"
+    if suffix == ".genome":
+        return read_plink_genome(path), "ibd", "PLINK --genome"
+    if suffix == ".seg":
+        return read_king_seg(path), "ibd", "KING --ibdseg"
+    if suffix == ".csv":
+        return read_ibd(path), "ibd", "IBD CSV"
+    raise ValueError(f"unknown pairwise file format: {path}")
 
 
 def read_psam(path: str | Path) -> dict[str, str | None]:

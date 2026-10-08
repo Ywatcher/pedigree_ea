@@ -81,6 +81,9 @@ class Neat(Representation):
             g, _ = self.mutate(g, rng)
         return g
 
+    def empty(self, rng):
+        return _genome([])
+
     def decode(self, g):
         b = dag.Builder(self.n)
         for p, c, en in zip(g.src.tolist(), g.dst.tolist(), g.enabled.tolist()):

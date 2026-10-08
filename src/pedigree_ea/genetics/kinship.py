@@ -11,7 +11,7 @@ Recursion, with people in topological order (parents first):
 A missing parent contributes 0.
 
 Kinship never decreases when a parent-child edge is added, which lets a search
-prune as soon as any pair exceeds its target (see brute_force.py).
+prune as soon as any pair exceeds its target (see reference/brute_force.py).
 """
 
 from __future__ import annotations

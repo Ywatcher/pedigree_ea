@@ -21,7 +21,7 @@ gene, and replace each of their genes by one of their parent's two genes
 When only founder genes remain, which tracked genes coincide gives the state.
 
 Monotonicity: adding a parent-child edge can only merge founder genes, so IBD0
-never increases and IBD2 never decreases (used for pruning in brute_force.py).
+never increases and IBD2 never decreases (used for pruning in reference/brute_force.py).
 """
 
 from __future__ import annotations

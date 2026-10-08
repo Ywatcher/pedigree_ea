@@ -1,7 +1,7 @@
 """Representation interface.
 
 A representation owns a genotype type, a decoder to the shared phenotype
-(an (N, 2) parent array, see batch.py), and variation operators. Required:
+(an (N, 2) parent array, see genetics/batch.py), and variation operators. Required:
 `random`, `decode`, `operators`. Optional capabilities:
     crossover(a, b, rng)       -> genotype      (has_crossover = True)
     distance(a, b)             -> float         (for speciation / niching)
@@ -43,6 +43,11 @@ class Representation:
         raise NotImplementedError
 
     # ---- optional -----------------------------------------------------------
+    def empty(self, rng: np.random.Generator) -> Genotype:
+        """A genotype decoding to the pedigree with no parent links (POSS starts
+        there). Default: a random genotype."""
+        return self.random(rng)
+
     def crossover(self, a: Genotype, b: Genotype, rng: np.random.Generator) -> Genotype:
         raise NotImplementedError(f"{self.name} has no crossover")
 

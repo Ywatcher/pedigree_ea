@@ -36,31 +36,10 @@ sys.path.insert(0, str(ROOT / "src"))
 import numpy as np  # noqa: E402
 
 from pedigree_ea import PedigreeSet, enumerate_pedigrees, inbreeding, io  # noqa: E402
-from pedigree_ea.cases import Case  # noqa: E402
+from pedigree_ea.data.cases import Case  # noqa: E402
 from pedigree_ea.ea import IMPLEMENTED, RunLogger, Stopping, baseline_config, make_stamp, run_case  # noqa: E402
 
 DEFAULT_TOL = {"ibd": 0.15, "kinship": 0.05, "king": 0.05}
-
-
-def load(path: Path, target: str, unrelated_ibs0: float | None):
-    """Returns (data, kind, note)."""
-    suffix = path.suffix.lower()
-    if suffix in (".kin0", ".kin"):
-        if target == "kinship":
-            return io.read_king_kinship(path, clip_negative=True), "kinship", \
-                "KING kinship, negative values set to 0"
-        data = io.read_king(path, unrelated_ibs0)
-        base = f"unrelated IBS0 baseline {data.unrelated_ibs0:.4f}"
-        if target == "ibd":
-            return data.approx_ibd(), "ibd", f"approximate IBD from KING kinship + IBS0 ({base})"
-        return data, "king", f"KING kinship + IBS0 -> IBD0 ({base})"
-    if suffix == ".genome":
-        return io.read_plink_genome(path), "ibd", "PLINK --genome"
-    if suffix == ".seg":
-        return io.read_king_seg(path), "ibd", "KING --ibdseg"
-    if suffix == ".csv":
-        return io.read_ibd(path), "ibd", "IBD CSV"
-    raise SystemExit(f"unknown input format: {path}")
 
 
 def is_outbred(ped) -> bool:
@@ -87,7 +66,10 @@ def main() -> None:
     ap.add_argument("--log", action="store_true")
     args = ap.parse_args()
 
-    data, kind, note = load(args.input, args.target, args.unrelated_ibs0)
+    try:
+        data, kind, note = io.read_pairwise(args.input, args.target, args.unrelated_ibs0)
+    except ValueError as e:
+        raise SystemExit(str(e))
     tol = args.tol if args.tol is not None else DEFAULT_TOL[kind]
     name = args.input.stem
     stamp = make_stamp()

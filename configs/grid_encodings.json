@@ -1,0 +1,10 @@
+{
+  "name": "encodings",
+  "cases": ["avuncular", "first_cousins", "sibs_with_children"],
+  "seeds": 3,
+  "stopping": {"max_evals": 20000},
+  "grid": {
+    "representation": ["direct", "neat", "cgp"],
+    "strategy": ["nsga2", "poss"]
+  }
+}
